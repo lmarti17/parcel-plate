@@ -9,6 +9,9 @@ import { GUI } from "lil-gui";
 import vertexShader from "./vertex.glsl";
 import fragmentShader from "./fragment.glsl";
 
+/**
+ * * DOM elements
+ */
 const canvasDOM = document.querySelector(".webgl-canvas");
 
 /**
@@ -23,6 +26,17 @@ const sizes = {
 //  Debugging UI
 
 const gui = new GUI();
+
+const parameters = {
+  backgroundColor: 0xfafafa,
+};
+
+gui
+  .addColor(parameters, "backgroundColor")
+  .name("Background Color")
+  .onChange(() => {
+    renderer.setClearColor(parameters.backgroundColor);
+  });
 
 /**
  * * Creating scene
@@ -56,7 +70,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 
 renderer.setSize(sizes.width, sizes.height);
-renderer.setClearColor(new THREE.Color(0xe3e3e3));
+renderer.setClearColor(new THREE.Color(parameters.backgroundColor));
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 document.body.appendChild(renderer.domElement);
