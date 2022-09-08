@@ -6,8 +6,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GUI } from "lil-gui";
 
-import vertexShader from "./vertex.glsl";
-import fragmentShader from "./fragment.glsl";
+import particleVertexShader from "./shaders/particleShader/vertex.glsl";
+import particleFragmentShader from "./shaders/particleShader/fragment.glsl";
 
 /**
  * * DOM elements
@@ -29,6 +29,7 @@ const gui = new GUI();
 
 const parameters = {
   backgroundColor: 0xfafafa,
+  count: 10000,
 };
 
 gui
@@ -37,6 +38,12 @@ gui
   .onChange(() => {
     renderer.setClearColor(parameters.backgroundColor);
   });
+gui
+  .add(parameters, "count")
+  .name("Particles Count")
+  .min(1000)
+  .max(500000)
+  .step(1000);
 
 /**
  * * Creating scene
@@ -93,15 +100,50 @@ window.addEventListener("resize", () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
+window.addEventListener("mousemove", ({ clientX, clientY }) => {
+  mesh.material.uniforms.uMouse.x = clientX / sizes.width;
+  mesh.material.uniforms.uMouse.y = 1 - clientY / sizes.height;
+});
+
+/**
+ * Geometry
+ */
+const geometry = new THREE.BufferGeometry();
+
+const positions = new Float32Array(parameters.count * 3);
+const scales = new Float32Array(parameters.count);
+
+for (let i = 0; i < parameters.count; i++) {
+  const i3 = i * 3;
+
+  positions[i3] = (Math.random() - 0.5) * 2;
+  positions[i3 + 1] = (Math.random() - 0.5) * 2;
+  positions[i3 + 2] = (Math.random() - 0.5) * 2;
+
+  // Scale
+  scales[i] = Math.random();
+}
+
+geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute("aScale", new THREE.BufferAttribute(scales, 1));
 /**
  * ? Meshes
  */
 
-const mesh = new THREE.Mesh(
-  new THREE.PlaneGeometry(2, 2, 10, 10),
-  new THREE.RawShaderMaterial({
-    vertexShader,
-    fragmentShader,
+const mesh = new THREE.Points(
+  geometry,
+  new THREE.ShaderMaterial({
+    vertexShader: particleVertexShader,
+    fragmentShader: particleFragmentShader,
+    uniforms: {
+      uTime: { value: 0.0 },
+      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+      uSize: { value: 30 * renderer.getPixelRatio() },
+    },
+    // For particles
+    depthWrite: false,
+    // blending: THREE.AdditiveBlending,
+    vertexColors: true,
   })
 );
 
@@ -111,12 +153,19 @@ scene.add(mesh);
  * * Tick function
  */
 
+const clock = new THREE.Clock();
+
 const tick = () => {
-  renderer.render(scene, camera);
+  const elapsedTime = clock.getElapsedTime();
+
+  // Updating uniforms
+  mesh.material.uniforms.uTime.value = elapsedTime;
 
   // updating orbit controls
   controls.update();
 
+  // render scene
+  renderer.render(scene, camera);
   window.requestAnimationFrame(tick);
 };
 
